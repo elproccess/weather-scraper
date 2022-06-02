@@ -1,13 +1,11 @@
 const webScrape = require('./webScrape');
 
-    const getDataLondon =  webScrape.getData("https://www.bbc.co.uk/weather/2643743");
+    //const getDataLondon = await webScrape.getData("https://www.bbc.co.uk/weather/2643743");
 
-    const getSW8 = webScrape.getData("https://www.bbc.co.uk/weather/sw8")
-
-function main(){
-   getSW8;
+const start = async function main(){
+     const SW8 = await webScrape.getData("https://www.bbc.co.uk/weather/sw8"); 
 }
 
 if(require.main === module) {
-    main();
+    start();
 }

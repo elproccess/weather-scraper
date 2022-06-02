@@ -1,19 +1,22 @@
 const puppeteer = require("puppeteer");
 const cheerio = require("cheerio");
 
+const service = require("./service");
+
 scraped_quotes = [];
 
 //each hour intervals
-scraped_times = []; // hour
-scraped_descriptions = []; // description of the weather at that hour
+//scraped_times = []; // hour
+//scraped_descriptions = []; // description of the weather at that hour
 scraped_celcius_temperature = []; // temperature(C) of the weather at that hour
 scraped_fahrenheit_temperature = []; // temperature(F) of the weather at that hour
 scrape_full_descriptions = []; // full description of the weather
 scraped_visibility = []; // visbility of the weather at that hour
 scraped_humidity = []; //humidity of the weather at that hour
+scraped_date = []; // date of the weather at that hour
 scraped_data = [];
-data_ = []; // all weather data correctly structured 
-date_temperature = "";
+data_ = [];
+//date = " ";
 async function getData(URL) {
   try {
     const browser = await puppeteer.launch();
@@ -27,9 +30,9 @@ async function getData(URL) {
     });
 
     const $ = cheerio.load(pageData.html);
+    let original_date = $("div.wr-date");
     let quote_cards = $("div.wr-day-temperature__low");
 
-    
     for (let i = 0; i < 13; i++) {
       console.log("scrape interval: " + i);
       const form = await page.$("a#daylink-" + i);
@@ -43,32 +46,17 @@ async function getData(URL) {
       //
       const t = cheerio.load(DataP.html);
 
-      let temperature_date = t("div.wr-day__title").text();
+      let temperature_date = t("div.wr-date").text();
       let temprature_time_slot2 = t("div.wr-time-slot-primary__title");
       let temprature_time_description2 = t("div.wr-time-slot-primary__body");
       let temperature_byHour = t("div.wr-time-slot-primary__temperature");
       let temprature_bottom_section = t(
         "div.wr-time-slot-secondary__bottom-section-container"
       );
+      service.scrape_hours(temprature_time_slot2, t);
+      service.scrape_description(temprature_time_description2, t);
 
-
-      temprature_time_slot2.each((index, element) => {
-        time_slot = t(element).find("span.wr-time-slot-primary__hours").text();
-        scraped_times.push({
-          hours: time_slot,
-        });
-      });
-
-      temprature_time_description2.each((index, element) => {
-        description = t(element)
-          .find(".wr-time-slot-primary__weather-type-description")
-          .text();
-        scraped_descriptions.push({
-          description: description,
-        });
-      });
-
-      //scrape the humudity by the hour
+      //scrape the humudity, pressure, and visbility by the hour
       temprature_bottom_section.each((index, element) => {
         bottom_section = t(element)
           .find("dd.wr-time-slot-secondary__value")
@@ -77,7 +65,11 @@ async function getData(URL) {
         humudity = bottom_section.split("%")[0];
         humudity += "%";
 
-        pressure = bottom_section.split("%")[1];
+        pressureVisbilty = bottom_section.split("%")[1];
+        pressure = pressureVisbilty.split("mb")[0];
+        pressure += "mb";
+
+        visbility = pressureVisbilty.split("mb")[1];
 
         scraped_humidity.push({
           humudity: humudity,
@@ -106,41 +98,58 @@ async function getData(URL) {
 
       for (let j = 0; j < scraped_descriptions.length; j++) {
         scraped_data.push({
-          intervals : j,
+          intervals: j,
           Hour: scraped_times[j].hours,
           description: scraped_descriptions[j].description,
           temprature_celcius: scraped_celcius_temperature[j].temprature_celcius,
-          temprature_fahrenheit: scraped_fahrenheit_temperature[j].temprature_fahrenheit,
+          temprature_fahrenheit:
+            scraped_fahrenheit_temperature[j].temprature_fahrenheit,
           humudity: scraped_humidity[j].humudity,
+          pressure: pressure,
+          visbility: visbility,
         });
-      } 
-
-
+      }
 
       data_.push({
+        date: temperature_date,
         interval: i,
-        date: date_temperature,
         hourlyWeatherIntervals: scraped_data,
       });
 
-      data_.forEach((item) => {
-        item.hourlyWeatherIntervals.forEach((element) => {
-          console.log(
-            "description " +
-              element.description +
-              " humidty: " +
-              element.humudity
-          );
-        });
-      });
-
       //console.log(data_);
-      console.log(scraped_data);
+      // console.log(temperature_date);
       scraped_data = [];
       scraped_descriptions = [];
       scraped_times = [];
-      data_ = [];
     }
+    original_date.each((index, element) => {
+      ky = $(element).find("span.wr-date__long").text();
+      scraped_date.push({
+        date: ky,
+      });
+    });
+
+    for (let l = 0; l < data_.length; l++) {
+      data_[l].date = scraped_date[l].date;
+    }
+    data_.forEach((item) => {
+      item.hourlyWeatherIntervals.forEach((element) => {
+        console.log(
+          "date: " +
+            item.date +
+            " description " +
+            element.description +
+            " humidty: " +
+            element.humudity +
+            " Hour: " +
+            element.Hour +
+            " pressure: " +
+            element.pressure,
+            " visibility: " +
+            element.visbility
+        );
+      });
+    });
 
     // high temperature scrape
     quote_cards.each((index, element) => {
