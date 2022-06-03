@@ -2,6 +2,7 @@
   "dependencies": {
     "cheerio": "^1.0.0-rc.11",
     "express": "^4.18.1",
+    "node-cron": "^3.0.0",
     "puppeteer": "^14.1.1"
   }
 }

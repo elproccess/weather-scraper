@@ -2,6 +2,7 @@ const puppeteer = require("puppeteer");
 const cheerio = require("cheerio");
 
 const service = require("./service");
+const values = require("./values");
 
 scraped_quotes = [];
 
@@ -17,6 +18,7 @@ scraped_date = []; // date of the weather at that hour
 scraped_data = [];
 data_ = [];
 //date = " ";
+
 async function getData(URL) {
   try {
     const browser = await puppeteer.launch();
@@ -33,7 +35,7 @@ async function getData(URL) {
     let original_date = $("div.wr-date");
     let quote_cards = $("div.wr-day-temperature__low");
 
-    for (let i = 0; i < 13; i++) {
+    for (let i = 0; i < 14; i++) {
       console.log("scrape interval: " + i);
       const form = await page.$("a#daylink-" + i);
       const DataP = await form.evaluate((form) => {
@@ -46,55 +48,22 @@ async function getData(URL) {
       //
       const t = cheerio.load(DataP.html);
 
-      let temperature_date = t("div.wr-date").text();
+      let temperature_date = t("div.wr-date");
+      let temperature_date2 = t("div.wr-day__title");
       let temprature_time_slot2 = t("div.wr-time-slot-primary__title");
       let temprature_time_description2 = t("div.wr-time-slot-primary__body");
       let temperature_byHour = t("div.wr-time-slot-primary__temperature");
+      let probability_rain = t("div.wr-time-slot-primary__precipitation");
       let temprature_bottom_section = t(
         "div.wr-time-slot-secondary__bottom-section-container"
       );
       service.scrape_hours(temprature_time_slot2, t);
       service.scrape_description(temprature_time_description2, t);
-
-      //scrape the humudity, pressure, and visbility by the hour
-      temprature_bottom_section.each((index, element) => {
-        bottom_section = t(element)
-          .find("dd.wr-time-slot-secondary__value")
-          .text();
-
-        humudity = bottom_section.split("%")[0];
-        humudity += "%";
-
-        pressureVisbilty = bottom_section.split("%")[1];
-        pressure = pressureVisbilty.split("mb")[0];
-        pressure += "mb";
-
-        visbility = pressureVisbilty.split("mb")[1];
-
-        scraped_humidity.push({
-          humudity: humudity,
-          pressure: pressure,
-        });
-      });
-
-      // scrape the temperature by the hour
-      temperature_byHour.each((index, element) => {
-        celcius_byHour = t(element)
-          .find("span.wr-value--temperature--c")
-          .text();
-        scraped_celcius_temperature.push({
-          temprature_celcius: celcius_byHour,
-        });
-      });
-
-      temperature_byHour.each((index, element) => {
-        fahrenheit_byHour = t(element)
-          .find("span.wr-value--temperature--f")
-          .text();
-        scraped_fahrenheit_temperature.push({
-          temprature_fahrenheit: fahrenheit_byHour,
-        });
-      });
+      service.scrape_date(temperature_date, t);
+      service.scrape_bottom_container(temprature_bottom_section, t);
+      service.scrape_hour_temperature(temperature_byHour, t);
+      service.scrape_hour_temperature_f(temperature_byHour, t);
+      service.scrape_probability(probability_rain, t);
 
       for (let j = 0; j < scraped_descriptions.length; j++) {
         scraped_data.push({
@@ -105,13 +74,16 @@ async function getData(URL) {
           temprature_fahrenheit:
             scraped_fahrenheit_temperature[j].temprature_fahrenheit,
           humudity: scraped_humidity[j].humudity,
-          pressure: pressure,
-          visbility: visbility,
+          pressure: scraped_humidity[j].pressure,
+          visbility: scraped_humidity[j].visbility,
+          precipitation: scraped_humidity[j].precipitation,
+          wind_direction: scraped_humidity[j].wind_direction,
+          rain_precentage: scraped_rain_probability[j].rain_precentage,
         });
       }
 
       data_.push({
-        date: temperature_date,
+        date: scraped_date[1].date,
         interval: i,
         hourlyWeatherIntervals: scraped_data,
       });
@@ -121,6 +93,9 @@ async function getData(URL) {
       scraped_data = [];
       scraped_descriptions = [];
       scraped_times = [];
+      scraped_humidity = [];
+      scraped_celcius_temperature = [];
+      scraped_fahrenheit_temperature = [];
     }
     original_date.each((index, element) => {
       ky = $(element).find("span.wr-date__long").text();
@@ -130,8 +105,36 @@ async function getData(URL) {
     });
 
     for (let l = 0; l < data_.length; l++) {
-      data_[l].date = scraped_date[l].date;
+      const today = new Date();
+      let current_date = ("" + today.getDate()).slice(-2);
+      let month = ("0" + (today.getMonth() + 1)).slice(-2);
+
+      if (
+        current_date === "1" ||
+        current_date === "21" ||
+        current_date === "31"
+      ) {
+        current_date += "st";
+      } else if (current_date === "2" || current_date === "22") {
+        current_date += "nd";
+      } else if (current_date === "3" || current_date === "23") {
+        current_date += "rd";
+      } else {
+        current_date += "th";
+      }
+
+      data_[l].date =
+        data_[l].interval === 0 ||
+        (data_[l].interval === 0 && data_[l].Hour === "00")
+          ? values.day[today.getDay() - 1] +
+            " " +
+            current_date +
+            " " +
+            values.monthNames[today.getMonth()] +
+            " "
+          : scraped_date[l - 1].date;
     }
+
     data_.forEach((item) => {
       item.hourlyWeatherIntervals.forEach((element) => {
         console.log(
@@ -144,9 +147,19 @@ async function getData(URL) {
             " Hour: " +
             element.Hour +
             " pressure: " +
-            element.pressure,
+            element.pressure +
+            " Wind Direction: " +
+            element.wind_direction +
+            " precipitation: " +
+            element.precipitation +
             " visibility: " +
-            element.visbility
+            element.visbility +
+            " Temperature(C°): " +
+            element.temprature_celcius +
+            "Temperature(F°): " +
+            element.temprature_fahrenheit +
+            " rain_precentage: " +
+            element.rain_precentage
         );
       });
     });
