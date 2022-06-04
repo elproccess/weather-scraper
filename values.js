@@ -23,13 +23,9 @@ const day = [
   "Sunday",
 ];
 
-const hours = [
-    "00",
-    "01",
-    "02",
-    "03",
-    "04",
-    "05",
-]
+const hours = ["00", "01", "02", "03", "04", "05"];
 
-module.exports = { monthNames, day, hours };
+mongo_string =
+  "mongodb+srv://database:database@cluster0.94uc3lz.mongodb.net/?retryWrites=true&w=majority";
+
+module.exports = { monthNames, day, hours, mongo_string };

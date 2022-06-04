@@ -86,18 +86,18 @@ function scrape_hour_temperature_f(temperature_byHour, t) {
 }
 
 function scrape_probability(probability_rain, t) {
-    probability_rain.each((index, element) => {
-        rain = t(element).find("div.wr-u-font-weight-500").text();
-        
-        percentage = rain.split("%")[0];
-        percentage += "%"
+  probability_rain.each((index, element) => {
+    rain = t(element).find("div.wr-u-font-weight-500").text();
 
-        chance_precipitation = rain.split("%")[1];
+    percentage = rain.split("%")[0];
+    percentage += "%";
 
-        scraped_rain_probability.push({
-            rain_precentage: percentage
-        });
+    chance_precipitation = rain.split("%")[1];
+
+    scraped_rain_probability.push({
+      rain_precentage: percentage,
     });
+  });
 }
 
 module.exports = {

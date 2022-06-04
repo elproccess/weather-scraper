@@ -5,22 +5,13 @@ const service = require("./service");
 const values = require("./values");
 
 scraped_quotes = [];
-
-//each hour intervals
-//scraped_times = []; // hour
-//scraped_descriptions = []; // description of the weather at that hour
-scraped_celcius_temperature = []; // temperature(C) of the weather at that hour
-scraped_fahrenheit_temperature = []; // temperature(F) of the weather at that hour
-scrape_full_descriptions = []; // full description of the weather
-scraped_visibility = []; // visbility of the weather at that hour
-scraped_humidity = []; //humidity of the weather at that hour
-scraped_date = []; // date of the weather at that hour
 scraped_data = [];
 data_ = [];
 //date = " ";
 
 async function getData(URL) {
   try {
+    data_ = [];
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
 
@@ -49,7 +40,6 @@ async function getData(URL) {
       const t = cheerio.load(DataP.html);
 
       let temperature_date = t("div.wr-date");
-      let temperature_date2 = t("div.wr-day__title");
       let temprature_time_slot2 = t("div.wr-time-slot-primary__title");
       let temprature_time_description2 = t("div.wr-time-slot-primary__body");
       let temperature_byHour = t("div.wr-time-slot-primary__temperature");
@@ -64,21 +54,30 @@ async function getData(URL) {
       service.scrape_hour_temperature(temperature_byHour, t);
       service.scrape_hour_temperature_f(temperature_byHour, t);
       service.scrape_probability(probability_rain, t);
+      quote_cards.each((index, element) => {
+        londonCel = $(element).find("span.wr-value--temperature--c").text();
+        londonFur = $(element).find("span.wr-value--temperature--f").text();
+
+        scraped_quotes.push({
+          low_c: londonCel,
+          low_f: londonFur,
+        });
+      });
 
       for (let j = 0; j < scraped_descriptions.length; j++) {
         scraped_data.push({
           intervals: j,
-          Hour: scraped_times[j].hours,
-          description: scraped_descriptions[j].description,
+          descriptions: scraped_descriptions[j].description,
+          hour: scraped_times[j].hours,
           temprature_celcius: scraped_celcius_temperature[j].temprature_celcius,
           temprature_fahrenheit:
             scraped_fahrenheit_temperature[j].temprature_fahrenheit,
           humudity: scraped_humidity[j].humudity,
           pressure: scraped_humidity[j].pressure,
-          visbility: scraped_humidity[j].visbility,
-          precipitation: scraped_humidity[j].precipitation,
           wind_direction: scraped_humidity[j].wind_direction,
+          precipitation: scraped_humidity[j].precipitation,
           rain_precentage: scraped_rain_probability[j].rain_precentage,
+          visbility: scraped_humidity[j].visbility,
         });
       }
 
@@ -96,6 +95,7 @@ async function getData(URL) {
       scraped_humidity = [];
       scraped_celcius_temperature = [];
       scraped_fahrenheit_temperature = [];
+      scraped_rain_probability = [];
     }
     original_date.each((index, element) => {
       ky = $(element).find("span.wr-date__long").text();
@@ -123,6 +123,7 @@ async function getData(URL) {
         current_date += "th";
       }
 
+     
       data_[l].date =
         data_[l].interval === 0 ||
         (data_[l].interval === 0 && data_[l].Hour === "00")
@@ -130,52 +131,12 @@ async function getData(URL) {
             " " +
             current_date +
             " " +
-            values.monthNames[today.getMonth()] +
-            " "
+            values.monthNames[today.getMonth()]
           : scraped_date[l - 1].date;
     }
 
-    data_.forEach((item) => {
-      item.hourlyWeatherIntervals.forEach((element) => {
-        console.log(
-          "date: " +
-            item.date +
-            " description " +
-            element.description +
-            " humidty: " +
-            element.humudity +
-            " Hour: " +
-            element.Hour +
-            " pressure: " +
-            element.pressure +
-            " Wind Direction: " +
-            element.wind_direction +
-            " precipitation: " +
-            element.precipitation +
-            " visibility: " +
-            element.visbility +
-            " Temperature(C°): " +
-            element.temprature_celcius +
-            "Temperature(F°): " +
-            element.temprature_fahrenheit +
-            " rain_precentage: " +
-            element.rain_precentage
-        );
-      });
-    });
-
-    // high temperature scrape
-    quote_cards.each((index, element) => {
-      londonCel = $(element).find("span.wr-value--temperature--c").text();
-      londonFur = $(element).find("span.wr-value--temperature--f").text();
-
-      scraped_quotes.push({
-        LondonCel: londonCel,
-        LondonFur: londonFur,
-      });
-    });
-
     await browser.close();
+    return data_;
   } catch (e) {
     console.log(e);
   }
