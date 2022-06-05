@@ -5,24 +5,15 @@ const cron = require("node-cron");
 const MongoClient = require("mongodb").MongoClient;
 const Weather = require("./models/models");
 
-const app = express();
-app.use(express.json());
 var dbase;
 
 MongoClient.connect(mongo_string, (err, client) => {
   if (err) return console.error(err);
   dbase = client.db("weather");
-
-  app.listen(process.env.PORT || 3001, () => {
-    console.log(`Server is running on port ${3001}.`);
-  });
 });
-const start = async function main() {
-  const SW8 = await webScrape.getData("https://www.bbc.co.uk/weather/sw8");
-};
 
 if (require.main === module) {
-  cron.schedule("*/10 10-22 * * *", async () => {
+  cron.schedule("*/20 05-22 * * *", async () => {
       //south west london weather
       await insertData("https://www.bbc.co.uk/weather/sw8");
       await insertData("https://www.bbc.co.uk/weather/sw15");
@@ -58,7 +49,4 @@ if (require.main === module) {
         });
       });
   }
-  app.listen(3000, () => {
-    console.log("Server is running...");
-  });
 }

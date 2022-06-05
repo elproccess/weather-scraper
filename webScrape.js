@@ -127,7 +127,7 @@ async function getData(URL) {
       data_[l].date =
         data_[l].interval === 0 ||
         (data_[l].interval === 0 && data_[l].Hour === "00")
-          ? values.day[today.getDay() - 1] +
+          ? values.findDay(today.getDay()) +
             " " +
             current_date +
             " " +
